@@ -219,6 +219,19 @@ func PullPolicy(apiClient *clients.Settings, name, nsname string) (*PolicyBuilde
 	return &builder, nil
 }
 
+// WithExternallyCreated sets ExternallyCreated mode in SriovNetworkNodePolicy object.
+func (builder *PolicyBuilder) WithExternallyCreated(externallycreated bool) *PolicyBuilder {
+	if builder.Definition == nil {
+		builder.errorMsg = msg.UndefinedCrdObjectErrString("SriovNetworkNodePolicy")
+
+		return builder
+	}
+
+	builder.Definition.Spec.ExternallyCreated = externallycreated
+
+	return builder
+}
+
 // Create generates an SriovNetworkNodePolicy in the cluster and stores the created object in struct.
 func (builder *PolicyBuilder) Create() (*PolicyBuilder, error) {
 	if valid, err := builder.validate(); !valid {
