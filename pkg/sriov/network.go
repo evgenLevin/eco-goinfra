@@ -8,10 +8,12 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/msg"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	srIovV1 "github.com/k8snetworkplumbingwg/sriov-network-operator/api/v1"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"golang.org/x/exp/slices"
+
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -194,6 +196,11 @@ func (builder *NetworkBuilder) WithMacAddressSupport() *NetworkBuilder {
 	return builder.withCapabilities("mac")
 }
 
+// WithStaticIpam sets static IPAM in the SrIovNetwork definition spec.
+func (builder *NetworkBuilder) WithStaticIpam() *NetworkBuilder {
+	return builder.withIpam("static")
+}
+
 // WithOptions creates SriovNetwork with generic mutation options.
 func (builder *NetworkBuilder) WithOptions(options ...NetworkAdditionalOptions) *NetworkBuilder {
 	if valid, _ := builder.validate(); !valid {
@@ -351,6 +358,23 @@ func (builder *NetworkBuilder) withCapabilities(capability string) *NetworkBuild
 	builder.Definition.Spec.Capabilities = fmt.Sprintf(`{ "%s": true }`, capability)
 
 	return builder
+}
+
+func (builder *NetworkBuilder) withIpam(ipamType string) *NetworkBuilder {
+	if valid, _ := builder.validate(); !valid {
+		return builder
+	}
+
+	builder.Definition.Spec.IPAM = fmt.Sprintf(`{ "type": "%s" }`, ipamType)
+
+	return builder
+}
+
+// GetSriovNetworksGVR returns SriovNetwork's GroupVersionResource which could be used for Clean function.
+func GetSriovNetworksGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group: "sriovnetwork.openshift.io", Version: "v1", Resource: "sriovnetworks",
+	}
 }
 
 // validate will check that the builder and builder definition are properly initialized before

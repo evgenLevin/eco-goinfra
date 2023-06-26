@@ -3,12 +3,15 @@ package sriov
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/golang/glog"
+	"github.com/openshift-kni/eco-goinfra/pkg/msg"
 
 	srIovV1 "github.com/k8snetworkplumbingwg/sriov-network-operator/api/v1"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // NetworkNodeStateBuilder provides struct for SriovNetworkNodeState object which contains connection to cluster and
@@ -41,13 +44,13 @@ func NewNetworkNodeStateBuilder(apiClient *clients.Settings, nodeName, nsname st
 	if nodeName == "" {
 		glog.V(100).Infof("The name of the nodeName is empty")
 
-		builder.errorMsg = "error: 'nodeName' is empty"
+		builder.errorMsg = "SriovNetworkNodeState 'nodeName' is empty"
 	}
 
 	if nsname == "" {
 		glog.V(100).Infof("The namespace of the SriovNetworkNodeState is empty")
 
-		builder.errorMsg = "error: 'nsname' is empty"
+		builder.errorMsg = "SriovNetworkNodeState 'nsname' is empty"
 	}
 
 	return builder
@@ -141,4 +144,63 @@ func (builder *NetworkNodeStateBuilder) validate() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// WaitUntilSyncStatus waits for the duration of the defined timeout or until the
+// SriovNetworkNodeState gets to a specific syncStatus.
+func (builder *NetworkNodeStateBuilder) WaitUntilSyncStatus(syncStatus string, timeout time.Duration) error {
+	glog.V(100).Infof("Waiting for the defined period until SriovNetworkNodeState %s has syncStatus %s",
+		builder.Objects.Name, syncStatus)
+
+	if builder.errorMsg != "" {
+		return fmt.Errorf(builder.errorMsg)
+	}
+
+	if syncStatus == "" {
+		return fmt.Errorf("syncStatus can't be empty")
+	}
+
+	// Polls every retryInterval to determine if SriovNetworkNodeState is in desired syncStatus.
+	return wait.PollImmediate(time.Second, timeout, func() (bool, error) {
+		err := builder.Discover()
+
+		if err != nil {
+			return false, nil
+		}
+
+		if builder.Objects.Status.SyncStatus == syncStatus {
+			return true, nil
+		}
+
+		return false, nil
+	})
+}
+
+// GetNumVFs returns num-vfs under the given interface.
+func (builder *NetworkNodeStateBuilder) GetNumVFs(sriovInterface string) (int, error) {
+	glog.V(100).Infof(
+		"Getting num-vfs under interface %s from SriovNetworkNodeState %s",
+		sriovInterface, builder.nodeName)
+
+	if builder.Objects == nil {
+		return 0, fmt.Errorf(msg.UndefinedCrdObjectErrString("SriovNetworkNodeState"))
+	}
+
+	if sriovInterface == "" {
+		glog.V(100).Infof("The sriovInterface  can not be empty string")
+
+		return 0, fmt.Errorf("the sriovInterface is empty sting")
+	}
+
+	if builder.errorMsg != "" {
+		return 0, fmt.Errorf(builder.errorMsg)
+	}
+
+	for _, interf := range builder.Objects.Status.Interfaces {
+		if interf.Name == sriovInterface {
+			return interf.NumVfs, nil
+		}
+	}
+
+	return 0, fmt.Errorf("failed to find interface %s", sriovInterface)
 }
