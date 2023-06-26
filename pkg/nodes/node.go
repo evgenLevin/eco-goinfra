@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/openshift-kni/eco-goinfra/pkg/msg"
+
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
+	goclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	v1 "k8s.io/api/core/v1"
@@ -78,10 +82,36 @@ func (builder *NodeBuilder) Exists() bool {
 	glog.V(100).Infof("Checking if node %s exists", builder.Definition.Name)
 
 	var err error
-	builder.Object, err = builder.apiClient.CoreV1Interface.Nodes().Get(
-		context.Background(), builder.Definition.Name, metaV1.GetOptions{})
+	builder.Object, err = builder.Get()
+
+	if err != nil {
+		glog.V(100).Infof("Failed to collect node object due to %s", err.Error())
+	}
 
 	return err == nil || !k8serrors.IsNotFound(err)
+}
+
+// Get returns node object if found.
+func (builder *NodeBuilder) Get() (*v1.Node, error) {
+	if valid, err := builder.validate(); !valid {
+		return nil, err
+	}
+
+	glog.V(100).Infof("Collecting node object %s", builder.Definition.Name)
+
+	node := &v1.Node{}
+	err := builder.apiClient.Get(context.TODO(), goclient.ObjectKey{
+		Name: builder.Definition.Name,
+	}, node)
+
+	if err != nil {
+		glog.V(100).Infof(
+			"node object %s doesn't exist", builder.Definition.Name, builder.Definition.Namespace)
+
+		return nil, err
+	}
+
+	return node, err
 }
 
 // WithNewLabel defines the new label placed in the Node metadata.
@@ -187,6 +217,32 @@ func (builder *NodeBuilder) ExternalIPv4Network() (string, error) {
 	}
 
 	return extNetwork.IPv4, nil
+}
+
+// WaitUntilNodeStable waits for the duration of the defined timeout or until the
+// node gets to a stable - not unschedulable.
+func (builder *NodeBuilder) WaitUntilNodeStable(timeout time.Duration) error {
+	glog.V(100).Infof("Waiting for the defined period until node %s is not unschedulable",
+		builder.Definition.Name)
+
+	if builder.errorMsg != "" {
+		return fmt.Errorf(builder.errorMsg)
+	}
+
+	// Polls every retryInterval to determine if the node is not unschedulable.
+	return wait.PollImmediate(time.Second, timeout, func() (bool, error) {
+		node, err := builder.Get()
+
+		if err != nil {
+			return false, nil
+		}
+
+		if !node.Spec.Unschedulable {
+			return true, nil
+		}
+
+		return false, nil
+	})
 }
 
 // validate will check that the builder and builder definition are properly initialized before
