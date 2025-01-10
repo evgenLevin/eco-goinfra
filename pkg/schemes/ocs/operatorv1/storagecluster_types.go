@@ -402,6 +402,10 @@ type StorageDeviceSet struct {
 	DataPVCTemplate     corev1.PersistentVolumeClaim  `json:"dataPVCTemplate"`
 	MetadataPVCTemplate *corev1.PersistentVolumeClaim `json:"metadataPVCTemplate,omitempty"`
 	WalPVCTemplate      *corev1.PersistentVolumeClaim `json:"walPVCTemplate,omitempty"`
+
+	// Whether to encrypt the deviceSet or not
+	// +optional
+	Encrypted *bool `json:"encrypted,omitempty"`
 }
 
 // TODO: Fill in the members when the actual configurable options are defined in rook-ceph
@@ -471,6 +475,11 @@ type NFSSpec struct {
 	// +kubebuilder:validation:MaxLength=253
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
 	StorageClassName string `json:"storageClassName,omitempty"`
+	// LogLevel set logging level
+	// Log levels: NIV_NULL | NIV_FATAL | NIV_MAJ | NIV_CRIT | NIV_WARN | NIV_EVENT | NIV_INFO | NIV_DEBUG | NIV_MID_DEBUG | NIV_FULL_DEBUG | NB_LOG_LEVEL
+	// +optional
+	LogLevel          string `json:"logLevel,omitempty"`
+	ReconcileStrategy string `json:"reconcileStrategy,omitempty"`
 }
 
 // MonitoringSpec controls the configuration of resources for exposing OCS metrics
