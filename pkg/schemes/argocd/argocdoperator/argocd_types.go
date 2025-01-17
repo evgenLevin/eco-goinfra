@@ -128,6 +128,15 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// VolumeMounts adds volumeMounts to the Argo CD Controller container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// RespectRBAC restricts controller from discovering/syncing specific resources, Defaults is empty if not configured. Valid options are strict and normal.
+	RespectRBAC string `json:"respectRBAC,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
@@ -195,6 +204,18 @@ type ArgoCDApplicationSet struct {
 
 	// SCMProviders defines the list of allowed custom SCM provider API URLs
 	SCMProviders []string `json:"scmProviders,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// Volumes adds volumes to the Argo CD ApplicationSet Controller container.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// VolumeMounts adds volumeMounts to the Argo CD ApplicationSet Controller container.
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 func (a *ArgoCDApplicationSet) IsEnabled() bool {
@@ -465,6 +486,10 @@ func (a *ArgoCDRedisSpec) IsEnabled() bool {
 	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
+func (a *ArgoCDRedisSpec) IsRemote() bool {
+	return a.Remote != nil && *a.Remote != ""
+}
+
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
 
@@ -521,7 +546,9 @@ type ArgoCDRepoSpec struct {
 	// InitContainers defines the list of initialization containers for the repo server deployment
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
-	// SidecarContainers defines the list of sidecar containers for the repo server deployment
+	// SidecarContainers defines the list of sidecar containers for the repo
+	// server deployment. If the image field is omitted from a SidecarContainer,
+	// the image for the repo server will be used.
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 
 	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
@@ -529,10 +556,20 @@ type ArgoCDRepoSpec struct {
 
 	// Remote specifies the remote URL of the Repo Server container. (optional, by default, a local instance managed by the operator is used.)
 	Remote *string `json:"remote,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
 	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
+}
+
+func (a *ArgoCDRepoSpec) IsRemote() bool {
+	return a.Remote != nil && *a.Remote != ""
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -582,6 +619,9 @@ type ArgoCDServerGRPCSpec struct {
 type ArgoCDServerSpec struct {
 	// Autoscale defines the autoscale options for the Argo CD Server component.
 	Autoscale ArgoCDServerAutoscaleSpec `json:"autoscale,omitempty"`
+
+	// EnableRolloutsUI will add the Argo Rollouts UI extension in ArgoCD Dashboard.
+	EnableRolloutsUI bool `json:"enableRolloutsUI,omitempty"`
 
 	// GRPC defines the state for the Argo CD Server GRPC options.
 	GRPC ArgoCDServerGRPCSpec `json:"grpc,omitempty"`
@@ -638,6 +678,12 @@ type ArgoCDServerSpec struct {
 
 	// VolumeMounts adds volumeMounts to the Argo CD Server container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {
@@ -894,6 +940,15 @@ type ArgoCDSpec struct {
 	AggregatedClusterRoles bool `json:"aggregatedClusterRoles,omitempty"`
 }
 
+const (
+	ArgoCDConditionType = "Reconciled"
+)
+
+const (
+	ArgoCDConditionReasonSuccess       = "Success"
+	ArgoCDConditionReasonErrorOccurred = "ErrorOccurred"
+)
+
 // ArgoCDStatus defines the observed state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDStatus struct {
@@ -977,6 +1032,9 @@ type ArgoCDStatus struct {
 
 	// Host is the hostname of the Ingress.
 	Host string `json:"host,omitempty"`
+
+	// Conditions is an array of the ArgoCD's status conditions
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // Banner defines an additional banner message to be displayed in Argo CD UI
@@ -1109,4 +1167,12 @@ func ParseResourceTrackingMethod(name string) ResourceTrackingMethod {
 func (p SSOProviderType) ToLower() SSOProviderType {
 	str := string(p)
 	return SSOProviderType(strings.ToLower(str))
+}
+
+// UseExternalCertificate return true if .route.tls.externalCertificate is set
+func (r *ArgoCDRouteSpec) UseExternalCertificate() bool {
+	if r != nil && r.TLS != nil && r.TLS.ExternalCertificate != nil {
+		return true
+	}
+	return false
 }

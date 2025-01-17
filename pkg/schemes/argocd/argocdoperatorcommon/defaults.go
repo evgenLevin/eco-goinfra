@@ -70,7 +70,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:68894064bc381c19ea951029510aa614bd26bf46c2ec65ea445c7d8d095a9417" // v2.12.3
+	ArgoCDDefaultArgoVersion = "sha256:19608c266cc41e4986d9b1c2b79ea4c42bb9430269eefc5005e9d65be4d22868" // v2.13.1
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -230,6 +230,12 @@ const (
 
 	// ArgoCDDefaultResourceInclusions is the default resource inclusions.
 	ArgoCDDefaultResourceInclusions = ""
+
+	// ArgoCDExtensionInstallerImage is the default image for ArgoCD Extension Installer that can be used to install UI extensions like Rollouts extension.
+	ArgoCDExtensionInstallerImage = "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8"
+
+	// ArgoRolloutsExtensionURL is the URL used to download the extension.js file from the latest rollout-extension tar release
+	ArgoRolloutsExtensionURL = "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar"
 
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048
