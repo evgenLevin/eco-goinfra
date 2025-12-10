@@ -40,6 +40,10 @@ type FRRConfigurationSpec struct {
 
 // RawConfig is a snippet of raw frr configuration that gets appended to the
 // rendered configuration.
+//
+// WARNING: The RawConfig feature is UNSUPPORTED and intended ONLY FOR EXPERIMENTATION.
+// It should not be used in production environments. This feature is provided as-is without any
+// guarantees of stability, compatibility, or support. Use at your own risk.
 type RawConfig struct {
 	// Priority is the order with this configuration is appended to the
 	// bottom of the rendered configuration. A higher value means the
@@ -117,7 +121,18 @@ type Neighbor struct {
 	SourceAddress string `json:"sourceaddress,omitempty"`
 
 	// Address is the IP address to establish the session with.
-	Address string `json:"address"`
+	// +optional
+	Address string `json:"address,omitempty"`
+
+	// Interface is the node interface over which the unnumbered BGP peering will
+	// be established. No API validation takes place as that string value
+	// represents an interface name on the host and if user provides an invalid
+	// value, only the actual BGP session will not be established.
+	// Address and Interface are mutually exclusive and one of them must be specified.
+	// Note: when enabling unnumbered, the neighbor will be enabled for both
+	// IPv4 and IPv6 address families.
+	// +optional
+	Interface string `json:"interface,omitempty"`
 
 	// Port is the port to dial when establishing the session.
 	// Defaults to 179.
@@ -181,9 +196,17 @@ type Neighbor struct {
 	ToReceive Receive `json:"toReceive,omitempty"`
 
 	// To set if we want to disable MP BGP that will separate IPv4 and IPv6 route exchanges into distinct BGP sessions.
+	//
+	// Deprecated: DisableMP is deprecated in favor of dualStackAddressFamily.
 	// +optional
 	// +kubebuilder:default:=false
 	DisableMP bool `json:"disableMP,omitempty"`
+
+	// To set if we want to enable the neighbor not only for the ipfamily related to its session,
+	// but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa.
+	// +optional
+	// +kubebuilder:default:=false
+	DualStackAddressFamily bool `json:"dualStackAddressFamily,omitempty"`
 }
 
 // Advertise represents a list of prefixes to advertise to the given neighbor.
